@@ -1,0 +1,42 @@
+ [
+      {
+        "mobile_number": "123-456-7890.",
+        "customer_name": "John Doe",
+        "account_number": "9876543210",
+        "payment_date": "June 20, 2024",
+        "amount_paid": "Rs.500",
+        "amount_due": "Rs.0"
+      },
+      {
+        "mobile_number": "234-567-8901.",
+        "customer_name": "Jane Smith",
+        "account_number": "8765432109",
+        "payment_date": "June 21, 2024",
+        "amount_paid": "Rs.750",
+        "amount_due": "Rs.0"
+      },
+      {
+        "mobile_number": "345-678-9012.",
+        "customer_name": "Alice Brown",
+        "account_number": "7654321098",
+        "payment_date": "June 22, 2024",
+        "amount_paid": "Rs.600",
+        "amount_due": "Rs.0"
+      },
+      {
+        "mobile_number": "901-234-5678.",
+        "customer_name": "Grace Orange",
+        "account_number": "1098765432",
+        "payment_date": "N/A",
+        "amount_paid": "N/A",
+        "amount_due": "N/A"
+      },
+      {
+        "mobile_number": "890-123-4567.",
+        "customer_name": "Frank Yellow",
+        "account_number": "2109876543",
+        "payment_date": "N/A",
+        "amount_paid": "N/A",
+        "amount_due": "N/A"
+      }
+]

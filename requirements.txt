@@ -1,0 +1,8 @@
+faiss-cpu
+streamlit
+sentence-transformers
+nltk
+azure-cognitiveservices-speech
+openai
+langchain
+langchain_community
