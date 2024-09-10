@@ -1,14 +1,12 @@
 import streamlit as st
 import azure.cognitiveservices.speech as speechsdk
-import openai
 import json
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores.faiss import FAISS
 from langchain_community.chat_models import ChatOpenAI
 from langchain.chains import RetrievalQAWithSourcesChain
 from nltk.tokenize import word_tokenize
-import speech_recognition as sr
-from langchain_community.chat_models import AzureChatOpenAI
+
 
 
 
