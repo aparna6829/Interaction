@@ -6,44 +6,41 @@ from langchain_community.vectorstores.faiss import FAISS
 from langchain_community.chat_models import ChatOpenAI
 from langchain.chains import RetrievalQAWithSourcesChain
 from nltk.tokenize import word_tokenize
+from streamlit_webrtc import webrtc_streamer, AudioProcessorBase, ClientSettings
 
-
-
-
-st.set_page_config(page_icon="🎙️", page_title="Interaction", layout="wide")
+st.set_page_config(page_icon="🎙️", page_title="Interaction", layout="centered")
 
 header = st.container()
 header.write(f"""
     <div class='fixed-header'>
-        <h1>Interactive Bot</h1>
+        <h1>📞Interactive Bot</h1>
     </div>
 """, unsafe_allow_html=True)
 
 st.markdown(
     """
     <style>
-        .st-emotion-cache-vj1c9o {
-            background-color: rgb(242, 242, 242, 0.68);
-        }
-        div[data-testid="stVerticalBlock"] div:has(div.fixed-header) {
-            position: sticky;
-            top: 0;
-            background-color: rgb(242, 242, 242, 0.68);
-            z-index: 999;
-            text-align: center;
-            margin-top: -18px;
-        }
-        .fixed-header {
-            border-bottom: 0;
-        }
-        .st-emotion-cache-1rsyhoq p {
-        word-break: break-word;
-        border: 1px solid;
-        background-color: rgb(242, 242, 242, 0.68);
-        margin-top : 10px;
-        border-radius : 5px;
-        line-height : 2.2;
+    .st-emotion-cache-gddhx3{
+    max-height: 65vh;
+    overflow: hidden;
+    overflow-y: scroll;
     }
+    .st-emotion-cache-vj1c9o {
+        background-color: rgb(242, 242, 242, 0.68);
+    }
+    div[data-testid="stVerticalBlock"] div:has(div.fixed-header) {
+        position: sticky;
+        top: 0;
+        background-color: rgb(242, 242, 242, 0.68);
+        z-index: 999;
+        text-align: center;
+        margin-top: -18px;
+        padding-bottom: 5px
+    }
+    .fixed-header {
+        border-bottom: 0;
+    }
+ 
     .st-emotion-cache-1vt4y43 {
     display: inline-flex;
     -webkit-box-align: center;
@@ -56,12 +53,36 @@ st.markdown(
     min-height: 2.5rem;
     margin: 0px;
     line-height: 1.6;
-    color: inherit;
+    color: black;
     width: auto;
     user-select: none;
-    background-color: rgb(255, 255, 255);
-    border: 1px solid rgb(13 13 14);
+    background-color:white;
+    border: 1.5px solid black;
+    margin-left:85px;
+    cursor: pointer;
+    user-select: none;
     }   
+    
+    
+    [data-testid="stAppViewBlockContainer"]{
+    width: 100%;
+    padding: 6rem 1rem 30rem;
+    max-width: 40rem;
+    border: 1px solid black;
+    border-radius: 10px;
+    max-height: 98vh;
+    overflow: hidden;
+    }
+    
+    .st-emotion-cache-1rsyhoq p {
+    word-break: break-word;
+    background-color: rgb(242, 242, 242, 0.68);
+    margin-top : 10px;
+    line-height : 2.2;
+    border: 1px solid purple;
+    border-radius:5px;
+    }
+    
 
     </style>
     """,
@@ -76,6 +97,7 @@ hide_st_style = """
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
+
 
 class VectorDatabase:
     def __init__(self, filename="Queries.json"):
@@ -101,26 +123,22 @@ class VectorDatabase:
 
     def get_vector(self, question):
         for entry in self.vectors:
-            if entry["question"] == question:  # Updated key from 'query' to 'question'
+            if entry["question"] == question:  
                 return entry["answer"]
         return None
 
-
 def initialize():
-    AZURE_SPEECH_KEY = st.secrets["AZURE_SPEECH_KEY"]
-    AZURE_SPEECH_REGION = st.secrets["AZURE_SPEECH_REGION"]
+    AZURE_SPEECH_KEY = "42e142c0df4e42b297be206230a66d7b"
+    AZURE_SPEECH_REGION = "eastus"
 
 
- 
     speech_config = speechsdk.SpeechConfig(subscription=AZURE_SPEECH_KEY, region=AZURE_SPEECH_REGION)
     speech_config.speech_recognition_language = "en-US"
-    audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
-    return speech_config, audio_config
+    return speech_config
 
 def load_json_data(file_path):
     with open(file_path, 'r') as file:
         return json.load(file)
-
 
 def find_customer_details(mobile_number, json_data):
     for item in json_data:
@@ -136,31 +154,9 @@ def fill_placeholders(question, customer_details):
         question = question.replace("{payment_date}", customer_details.get("payment_date", ""))
     return question
 
-def stop_speaking_on_stop_words(synthesizer, stop_words=None):
-    if stop_words is None:
-        stop_words = ["stop", "please wait", "pause", "just a moment", "halt", "stay put", "one moment please", "wait a second", "wait a minute", "Telexa"]
-
-    speech_config, audio_config = initialize()
-    recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
-
-    def recognized_cb(evt):
-        recognized_text = evt.result.text.lower()
-        for word in stop_words:
-            if word in recognized_text:
-                st.write(f"'{word}' detected. Stopping speech.")
-                stop_future = synthesizer.stop_speaking_async()
-                stop_future.get()
-                st.write("Go ahead.")
-                synthesizer.speak_text_async("Yes! Go ahead").get()
-                break
-
-    recognizer.recognized.connect(recognized_cb)
-    recognizer.start_continuous_recognition_async()
-
-    return recognizer
-
-
-
+class AudioProcessor(AudioProcessorBase):
+    def recv(self, frame):
+        return frame
 
 def generate_response(embedding_path, query):
     vector_db = VectorDatabase()
@@ -188,42 +184,44 @@ def generate_response(embedding_path, query):
             llm, chain_type="stuff", return_source_documents=True, retriever=vector.as_retriever()
         )
         return chain
-     
-
-
-
 
 def main():
     vector_db = VectorDatabase()
 
-    speech_config, audio_config = initialize()
-    speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
+    speech_config = initialize()
+    speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config)
     audio_output_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
     speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_output_config)
     json_data = load_json_data("details.json")
 
-    
     if 'is_listening' not in st.session_state:
         st.session_state.is_listening = False
 
     customer_details = None
 
     col1, col2 = st.columns(2)
-   
+
     with col1:
-        if st.button("Start Listening"):
+        if st.button("Answer"):
             st.session_state.is_listening = True
-   
+
     with col2:
-        if st.button("Stop Listening"):
+        if st.button("Reject"):
             st.session_state.is_listening = False
 
-    stop_word_recognizer = None
+    # WebRTC streaming
+    webrtc_ctx = webrtc_streamer(
+        key="speech-recognition",
+        mode="sendonly",
+        client_settings=ClientSettings(
+            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+            media_stream_constraints={"audio": True, "video": False},
+        ),
+        audio_processor_factory=AudioProcessor,
+    )
 
-    if st.session_state.is_listening:
-        st.write("You can speak now. I'm listening... Say 'stop' to pause the bot's speech.")
-       
-        stop_word_recognizer = stop_speaking_on_stop_words(speech_synthesizer)
+    if st.session_state.is_listening and webrtc_ctx.state.playing:
+        st.write("Hi there! How are you doing..")
         
         # Ask for mobile number
         mobile_number_question = "Can you please provide the registered mobile number of the customer for verification?"
@@ -231,6 +229,7 @@ def main():
         speech_synthesizer.speak_text_async(mobile_number_question).get()
 
         while st.session_state.is_listening:
+            # Recognize from WebRTC stream
             speech_recognition_result = speech_recognizer.recognize_once_async().get()
             mobile_number = speech_recognition_result.text.strip()
 
@@ -241,7 +240,6 @@ def main():
                     st.write(f"🙎🏼‍♀️Customer details found: {customer_details}")
                     
                     questions = [
-                        
                         "Thank you. I have verified the details. The customer's name is {customer_name}. Can you please provide the customer's loan account number or credit card number for further verification?",
                         "We have checked our records. A payment of {amount_paid} was made on {payment_date} for this customer.",
                         "Is there a better offer or a loan settlement option available for this customer?",
@@ -270,32 +268,22 @@ def main():
                         input_text = speech_recognition_result.text.strip()
                         if input_text:
                             st.write(f"🙎🏼‍♀️Query_asked: {input_text}")
-                            with st.spinner("Going to Find the Response for your query"):
-                                text_1 = "Going to Find the Response for your query"
+                            with st.spinner("Sure.Give me a moment"):
+                                text_1 = "Sure.Give me a moment"
                                 speech_synthesizer.speak_text_async(text_1).get()
                                 query = input_text
-                           
+                        
                                 chain = generate_response("Question_Answer_INDEX", input_text)
                                 result = chain({"question": query})
                                 response = result['answer']
-                               
-
+                        
                                 # Save the response vector in the vector database
-                                vector_db.save_vector(input_text,response)
+                                vector_db.save_vector(input_text, response)
 
-                                
                             st.write(f"🎙️{response}")
                             speech_synthesizer.speak_text_async(response).get()
-    
-                else:
-                    st.write("No customer details found for the provided mobile number.")
-                
-                break
-        else:
-            st.write("Click 'Start Listening' to begin.")
-
-    if stop_word_recognizer:
-        stop_word_recognizer.stop_continuous_recognition_async()
+            else:
+                st.write("Click 'Start Listening' to begin.")
 
 if __name__ == '__main__':
     main()

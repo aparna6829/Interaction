@@ -6,3 +6,4 @@ azure-cognitiveservices-speech
 openai
 langchain
 langchain_community
+streamlit-webrtc
